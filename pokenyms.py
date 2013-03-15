@@ -22,9 +22,9 @@ GAME_LIMIT = 10          # Number of anagrams to play during a battle (not train
 def usage():
     print "Usage: "
     print "pokenyms.py %s|%s|%s" % (TRAIN_STR, PLAY_STR, ALT_PLAY_STR)
-    print "    %s: Solve just a couple for practice." % TRAIN_STR
-    print "    %s: Play a standard game with decoys and a generated dictionary." % PLAY_STR
-    print "    %s: Play a modified game with no decoys and a buzzwords dictionary." % ALT_PLAY_STR
+    print "\t%s:\tSolve just a couple for practice." % TRAIN_STR
+    print "\t%s:\tPlay a standard game WITH decoys and a generated dictionary." % PLAY_STR
+    print "\t%s:\tPlay a modified game with no decoys and a buzzwords dictionary." % ALT_PLAY_STR
     exit()
 
 
@@ -90,7 +90,8 @@ def print_challenge(anagram, buttons):
 
     for i in range(num_buttons):
         print color.BLUE + buttons[i] + color.ENDC,
-    print ''
+    if PLAY_MODE != ALT_PLAY_STR:
+        print "\n(some may be decoys!)"
 
 
 def generate_buttons(anagram):
