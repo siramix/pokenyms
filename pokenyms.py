@@ -7,20 +7,24 @@ import sys
 import string
 import time
 
-NUM_BUTTONS = 10         # Number of buttons to generate for each challenge
+NUM_BUTTONS = 10     # [Variable] Number of buttons to generate for each challenge
 
 TRAIN_STR = "TRAIN"      # Parameter to train
 PLAY_STR = "PLAY"        # Parameter to play the game
+ALT_PLAY_STR = "PLAY2"   # Parameter to play the game with no extra letters
 SKIP_STR = "SKIP"        # Command to skip an anagram during play
 
 CLUE_WAIT = 5            # Seconds to wait before showing a clue
-SKIP_TIME = 30           # Seconds to wait before player can skip
+SKIP_TIME = 3           # Seconds to wait before player can skip
 GAME_LIMIT = 10          # Number of anagrams to play during a battle (not training)
 
 
 def usage():
     print "Usage: "
-    print "pokenyms.py %s|%s" % (TRAIN_STR, PLAY_STR)
+    print "pokenyms.py %s|%s|%s" % (TRAIN_STR, PLAY_STR, ALT_PLAY_STR)
+    print "    %s: Solve just a couple for practice." % TRAIN_STR
+    print "    %s: Play a standard game with decoys and a generated dictionary." % PLAY_STR
+    print "    %s: Play a modified game with no decoys and a buzzwords dictionary." % ALT_PLAY_STR
     exit()
 
 
@@ -31,14 +35,20 @@ def prompt_user(play_type):
     """
     if (play_type == TRAIN_STR):
         print color.ORANGE + "Ahhhh a fellow pokenym trainer. \nI see you are green " \
-            + "around the ears.\nHow about you play one just to get our feet wet. " \
-            + "Once you have trained, come see me again and let's " \
-            + color.BOLD + color.GREEN + "PLAY." + color.ENDC \
-            + "\n\nWhen you are ready to begin your training, press Enter:"
+            + "around the ears.\nHow about you play one just to get our feet wet." \
+            + "  Once you have trained, come see me again and let's " \
+            + color.BOLD + color.GREEN + "PLAY." + color.ENDC
     if (play_type == PLAY_STR):
-        print color.RED + "You dare battle my pokenyms?!\n " \
-            + "You are foolish to challenge me, but I accept." + color.ENDC \
-            + "\n\nWhen you are ready to begin battle, press Enter:"
+        print color.RED + "You dare battle my pokenyms?!\n" \
+            + "You are foolish to challenge me, but I accept." + color.ENDC
+
+    print color.ORANGE + "\nRules:" + color.ENDC
+    print "1. Solve the pokenym presented to you by typing it in and pressing enter."
+    print "2. Make as many guesses as you want."
+    print "3. Hitting enter will also update the clues."
+    print "4. Up to five new clues will be presented to you, one every %d seconds" % CLUE_WAIT
+    print "5. After %d seconds you will be given the option to SKIP at no penalty." % SKIP_TIME
+    print "\nWhen you are ready to begin battle, press Enter:"
     inputchar = 'x'
     while inputchar != '\n':
         inputchar = sys.stdin.read(1)
@@ -72,9 +82,13 @@ def print_challenge(anagram, buttons):
     print blanks
     print "(%i letters long)" % anagram_len
 
-    # Print out our buttons
+    # Print out correct number of buttons for each play mode
+    if PLAY_MODE == ALT_PLAY_STR:
+        num_buttons = anagram_len
+    elif PLAY_MODE == PLAY_STR or PLAY_MODE == TRAIN_STR:
+        num_buttons = NUM_BUTTONS
 
-    for i in range(NUM_BUTTONS):
+    for i in range(num_buttons):
         print color.BLUE + buttons[i] + color.ENDC,
     print ''
 
@@ -86,16 +100,28 @@ def generate_buttons(anagram):
     """
     key = anagram.get_anagram_key()
     anagram_len = len(key)
-    buttons = ['' for x in xrange(NUM_BUTTONS)]
+
+    # Number of buttons depends on play mode
+    # For standard play, there will be decoys which
+    # means NUM_BUTTONS must always exceed max key length
+    if PLAY_MODE == ALT_PLAY_STR:
+        num_buttons = anagram_len
+    elif PLAY_MODE == PLAY_STR or PLAY_MODE == TRAIN_STR:
+        assert(anagram_len <= NUM_BUTTONS)
+        num_buttons = NUM_BUTTONS
+
+    buttons = ['' for x in xrange(num_buttons)]
     # First fill in the correct buttons
     for i in range(anagram_len):
         buttons[i] = key[i].upper()
     # Now fill in decoy buttons (no dupes)
-    for i in range(NUM_BUTTONS - anagram_len):
-        new_btn = random.choice(string.letters).upper()
-        while new_btn in buttons or new_btn == 'X':
+    if PLAY_MODE == PLAY_STR:
+        for i in range(NUM_BUTTONS - anagram_len):
             new_btn = random.choice(string.letters).upper()
-        buttons[i+anagram_len] = new_btn
+            while new_btn in buttons or new_btn == 'X':
+                new_btn = random.choice(string.letters).upper()
+            buttons[i+anagram_len] = new_btn
+
     random.shuffle(buttons)
     return buttons
 
@@ -147,6 +173,8 @@ def battle_anagram(anagram):
     # Print out results of battle and return the time taken to win or skip
     if not skipped:
         print color.GREEN + "Pokenym defeated in %f seconds!" % (time_taken) + color.ENDC
+    else:
+        print color.RED + "Defeated by %s!" % (anagram.get_anagram_key()) + color.ENDC
     print "Press Enter to fight your next pokenym."
     inputchar = 'x'
     while inputchar != '\n':
@@ -173,9 +201,9 @@ class Anagram(object):
             self.RELATEDS[i] = relateds[i].upper()
 
 
-class Anagrams:
+class TrainingAnagrams:
     """
-    Stores all of our Anagrams to play with
+    Stores just training Anagrams.
     """
     INDEX = -1
     ANAGRAMS = [Anagram('', '') for x in xrange(11)]
@@ -186,16 +214,55 @@ class Anagrams:
 
     def __init__(self):
         self.ANAGRAMS[0] = Anagram('future', ['by-and-by', 'hereafter', 'destiny', 'tomorrow', 'eventuality'])
-        self.ANAGRAMS[1] = Anagram('bazaar', ['emporium', 'store', 'market', 'outlet', 'boutique'])
-        self.ANAGRAMS[2] = Anagram('greenhorn', ['abecedarian', 'apprentice', 'amateur', 'freshman', 'rookie'])
-        self.ANAGRAMS[3] = Anagram('clobber', ['batter', 'bludgeon', 'lambaste', 'pummel', 'annihilate'])
-        self.ANAGRAMS[4] = Anagram('traffic', ['business', 'marketplace', 'trade', 'commerce', 'dealings'])
-        self.ANAGRAMS[5] = Anagram('special', ['distinguished', 'defined', 'best', 'extraordinary', 'distinctive'])
-        self.ANAGRAMS[6] = Anagram('garment', ['apparel', 'array', 'attire', 'costume', 'covering'])
-        self.ANAGRAMS[7] = Anagram('danger', ['distress', 'harm\'s way', 'imperilment', 'jeopardy', 'risk'])
-        self.ANAGRAMS[8] = Anagram('bride', ['mate', 'newlywed', 'spouse', 'wife', 'better half'])
-        self.ANAGRAMS[9] = Anagram('tribute', ['accolade', 'acknowledgement', 'applause', 'appreciation', 'commendation'])
-        self.ANAGRAMS[10] = Anagram('lasso', ['bola', 'halter', 'rope', 'snare', 'capture'])
+
+
+class BattleAnagrams:
+    """
+    Stores the primary set of Anagrams to play with.
+    """
+    INDEX = -1
+    ANAGRAMS = [Anagram('', '') for x in xrange(11)]
+
+    def get_next_anagram(self):
+        self.INDEX += 1
+        return self.ANAGRAMS[self.INDEX]
+
+    def __init__(self):
+        self.ANAGRAMS[0] = Anagram('bazaar', ['emporium', 'store', 'market', 'outlet', 'boutique'])
+        self.ANAGRAMS[1] = Anagram('greenhorn', ['abecedarian', 'apprentice', 'amateur', 'freshman', 'rookie'])
+        self.ANAGRAMS[2] = Anagram('clobber', ['batter', 'bludgeon', 'lambaste', 'pummel', 'annihilate'])
+        self.ANAGRAMS[3] = Anagram('traffic', ['business', 'marketplace', 'trade', 'commerce', 'dealings'])
+        self.ANAGRAMS[4] = Anagram('special', ['distinguished', 'defined', 'best', 'extraordinary', 'distinctive'])
+        self.ANAGRAMS[5] = Anagram('garment', ['apparel', 'array', 'attire', 'costume', 'covering'])
+        self.ANAGRAMS[6] = Anagram('danger', ['distress', 'harm\'s way', 'imperilment', 'jeopardy', 'risk'])
+        self.ANAGRAMS[7] = Anagram('bride', ['mate', 'newlywed', 'spouse', 'wife', 'better half'])
+        self.ANAGRAMS[8] = Anagram('tribute', ['accolade', 'acknowledgement', 'applause', 'appreciation', 'commendation'])
+        self.ANAGRAMS[9] = Anagram('lasso', ['bola', 'halter', 'rope', 'snare', 'capture'])
+
+
+class BuzzwordsAnagrams:
+    """
+    Stores anagrams from Buzzwords. Should be a less predicable and more fun experience than
+    the BattleAnagrams.
+    """
+    INDEX = -1
+    ANAGRAMS = [Anagram('', '') for x in xrange(11)]
+
+    def get_next_anagram(self):
+        self.INDEX += 1
+        return self.ANAGRAMS[self.INDEX]
+
+    def __init__(self):
+        self.ANAGRAMS[0] = Anagram('Spreadsheet', ['EXCEL', 'NUMBERS', 'MATH', 'EQUATIONS', 'TABLE'])
+        self.ANAGRAMS[1] = Anagram('Spiritual', ['BELIEF', 'RELIGION', 'FAITH', 'GOD', 'HOLY'])
+        self.ANAGRAMS[2] = Anagram('Blister', ['POP', 'SKIN', 'HEEL', 'HANDLE', 'FOOT'])
+        self.ANAGRAMS[3] = Anagram('Motherboard', ['COMPUTER', 'PROCESSOR', 'BOOT', 'CIRCUIT', 'CHIP'])
+        self.ANAGRAMS[4] = Anagram('Bar Stool', ['DRINK', 'SIT', 'CHAIR', 'FIGHT', 'KITCHEN'])
+        self.ANAGRAMS[5] = Anagram('Therapist', ['ANALYZE', 'DOCTOR', 'COUCH', 'SHRINK', 'PSYCHIATRIST'])
+        self.ANAGRAMS[6] = Anagram('Whirlpool', ['WATER', 'SPIN', 'RIVER', 'SWIRL', 'APPLIANCE'])
+        self.ANAGRAMS[7] = Anagram('Calculus', ['MATH', 'FUNCTION', 'DERIVATIVE', 'INTEGRAL', 'LIMIT'])
+        self.ANAGRAMS[8] = Anagram('Illiterate', ['READ', 'WRITE', 'WORD', 'SCHOOL', 'EDUCATE'])
+        self.ANAGRAMS[9] = Anagram('Beatbox', ['RHYTHM', 'DRUM', 'MOUTH', 'SOUND', 'MUSIC'])
 
 
 class color:
@@ -222,13 +289,21 @@ class color:
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         usage()
-    game = Anagrams()
     # Either train (one game) or play pokenyms
-    if sys.argv[1] == TRAIN_STR:
+    global PLAY_MODE
+    PLAY_MODE = sys.argv[1]
+    if PLAY_MODE == TRAIN_STR:
+        game = TrainingAnagrams()
         prompt_user(TRAIN_STR)
         play_anagram(1)
-    elif sys.argv[1] == PLAY_STR:
-        game.get_next_anagram()  # Dump the training anagram
+    elif PLAY_MODE == PLAY_STR:
+        # 10 word game of standard pokenyms (decoy letters, dictionary words)
+        game = BattleAnagrams()
+        prompt_user(PLAY_STR)
+        play_anagram(GAME_LIMIT)
+    elif PLAY_MODE == ALT_PLAY_STR:
+        # 10 word game of buzzwords pokenyms
+        game = BuzzwordsAnagrams()
         prompt_user(PLAY_STR)
         play_anagram(GAME_LIMIT)
     else:

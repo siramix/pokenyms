@@ -30,3 +30,17 @@ This mode will go through all the anagrams I entered into
 the prototype.  Only do this once you've trained...it's
 not for the faint of heart.
 
+Decoy letters will be shown.
+Related words are very difficult.
+
+
+#### PLAY2:
+    /usr/bin/python pokenyms.py PLAY2
+
+This mode will go through anagrams I copied from buzzwords.
+I think it ends up being much more fun than the normal play mode.
+
+No decoys.
+Related words are related, but entered manually.
+
+
