@@ -15,7 +15,7 @@ ALT_PLAY_STR = "PLAY2"   # Parameter to play the game with no extra letters
 SKIP_STR = "SKIP"        # Command to skip an anagram during play
 
 CLUE_WAIT = 5            # Seconds to wait before showing a clue
-SKIP_TIME = 3           # Seconds to wait before player can skip
+SKIP_TIME = 30           # Seconds to wait before player can skip
 GAME_LIMIT = 10          # Number of anagrams to play during a battle (not training)
 
 
